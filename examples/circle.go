@@ -1,7 +1,7 @@
 package main
 
 import (
-	"caffix/ubigraph"
+	"github.com/caffix/go-ubigraph/ubigraph"
 	"fmt"
 	"time"
 )
