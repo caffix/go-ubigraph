@@ -8,7 +8,7 @@ go-ubigraph is an implementation of the Ubigraph client API and callback server.
 
 The Ubigraph server must already be installed before using this API. Unfortunately, the original website where the binaries could be downloaded is no longer available. Assuming you have acquired the server software anyway, continue to obtain the Go API package as follows:
 
-    go get "github.com/caffix/go-ubigraph/ubigraph
+    go get "github.com/caffix/go-ubigraph/ubigraph"
 
 That's it! You're ready to roll :-)
 
