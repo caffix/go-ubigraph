@@ -3,6 +3,7 @@ package ubigraph
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"github.com/caffix/gorilla-xmlrpc/xml"
 	"net/http"
 )
@@ -49,6 +50,10 @@ func (ubi *Ubigraph) Call(method string, args interface{}) (status int, err erro
 	}
 	status = reply.Status
 	return
+}
+
+func ubigraphError(method string, status int) error {
+	return fmt.Errorf("%s failed with status: %d", method, status)
 }
 
 func xmlRpcCall(url string, method string, args interface{}) (reply result, err error) {

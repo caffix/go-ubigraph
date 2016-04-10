@@ -1,10 +1,8 @@
 package ubigraph
 
-import (
-	"errors"
-)
-
-func (ubi *Ubigraph) NewEdge(vertIDX int, vertIDY int) (int, error) {
+// NewEdge creates a edge on the graph connected to two vertices identified by arguments.
+// It returns an Ubigraph server selected edge ID on success.
+func (ubi *Ubigraph) NewEdge(vertIDX, vertIDY int) (int, error) {
 	method := "ubigraph.new_edge"
 
 	status, err := ubi.Call(method, &struct{ Arg1, Arg2 int }{vertIDX, vertIDY})
@@ -14,6 +12,7 @@ func (ubi *Ubigraph) NewEdge(vertIDX int, vertIDY int) (int, error) {
 	return status, nil
 }
 
+// RemoveEdge deletes the edge with the identifier matching the argument.
 func (ubi *Ubigraph) RemoveEdge(edgeID int) error {
 	method := "ubigraph.remove_edge"
 
@@ -22,24 +21,27 @@ func (ubi *Ubigraph) RemoveEdge(edgeID int) error {
 		return err
 	}
 	if status != 0 {
-		return errors.New("ubigraph.remove_edge failed")
+		return ubigraphError(method, status)
 	}
 	return nil
 }
 
-func (ubi *Ubigraph) NewEdgeWithID(vertIDX int, vertIDY int) error {
+// NewEdgeWithID creates a edge on the graph connected to two selected vertices and with a chosen identifier.
+func (ubi *Ubigraph) NewEdgeWithID(edgeID, vertIDX, vertIDY int) error {
 	method := "ubigraph.new_edge_w_id"
 
-	status, err := ubi.Call(method, &struct{ Arg1, Arg2 int }{vertIDX, vertIDY})
+	status, err := ubi.Call(method, &struct{ Arg1, Arg2, Arg3 int }{edgeID, vertIDX, vertIDY})
 	if err != nil {
 		return err
 	}
 	if status != 0 {
-		return errors.New("ubigraph.new_edge_w_id failed")
+		return ubigraphError(method, status)
 	}
 	return nil
 }
 
+// NewEdgeStyle creates a edge style based on an existing style.
+// It returns an Ubigraph server selected style ID on success.
 func (ubi *Ubigraph) NewEdgeStyle(parentStyle int) (int, error) {
 	method := "ubigraph.new_edge_style"
 
@@ -50,7 +52,8 @@ func (ubi *Ubigraph) NewEdgeStyle(parentStyle int) (int, error) {
 	return status, nil
 }
 
-func (ubi *Ubigraph) NewEdgeStyleWithID(styleID int, parentStyle int) error {
+// NewEdgeStyleWithID creates a edge style with a chosen identifier based on an existing style.
+func (ubi *Ubigraph) NewEdgeStyleWithID(styleID, parentStyle int) error {
 	method := "ubigraph.new_edge_style_w_id"
 
 	status, err := ubi.Call(method, &struct{ Arg1, Arg2 int }{styleID, parentStyle})
@@ -58,12 +61,13 @@ func (ubi *Ubigraph) NewEdgeStyleWithID(styleID int, parentStyle int) error {
 		return err
 	}
 	if status != 0 {
-		return errors.New("ubigraph.new_edge_style_w_id failed")
+		return ubigraphError(method, status)
 	}
 	return nil
 }
 
-func (ubi *Ubigraph) ChangeEdgeStyle(edgeID int, styleID int) error {
+// ChangeEdgeStyle changes the identified edge's style.
+func (ubi *Ubigraph) ChangeEdgeStyle(edgeID, styleID int) error {
 	method := "ubigraph.change_edge_style"
 
 	status, err := ubi.Call(method, &struct{ Arg1, Arg2 int }{edgeID, styleID})
@@ -71,12 +75,13 @@ func (ubi *Ubigraph) ChangeEdgeStyle(edgeID int, styleID int) error {
 		return err
 	}
 	if status != 0 {
-		return errors.New("ubigraph.change_edge_style failed")
+		return ubigraphError(method, status)
 	}
 	return nil
 }
 
-func (ubi *Ubigraph) SetEdgeAttribute(edgeID int, attribute string, value string) error {
+// SetEdgeAttribute modifies the attributes of the identified edge.
+func (ubi *Ubigraph) SetEdgeAttribute(edgeID int, attribute, value string) error {
 	method := "ubigraph.set_edge_attribute"
 
 	status, err := ubi.Call(method,
@@ -89,12 +94,13 @@ func (ubi *Ubigraph) SetEdgeAttribute(edgeID int, attribute string, value string
 		return err
 	}
 	if status != 0 {
-		return errors.New("ubigraph.set_edge_attribute failed")
+		return ubigraphError(method, status)
 	}
 	return nil
 }
 
-func (ubi *Ubigraph) SetEdgeStyleAttribute(styleID int, attribute string, value string) error {
+// SetEdgeStyleAttribute modifies the attributes of the identified edge style.
+func (ubi *Ubigraph) SetEdgeStyleAttribute(styleID int, attribute, value string) error {
 	method := "ubigraph.set_edge_style_attribute"
 
 	status, err := ubi.Call(method,
@@ -107,7 +113,7 @@ func (ubi *Ubigraph) SetEdgeStyleAttribute(styleID int, attribute string, value 
 		return err
 	}
 	if status != 0 {
-		return errors.New("ubigraph.set_edge_style_attribute failed")
+		return ubigraphError(method, status)
 	}
 	return nil
 }
