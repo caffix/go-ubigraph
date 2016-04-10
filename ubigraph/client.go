@@ -3,7 +3,7 @@ package ubigraph
 import (
 	"bytes"
 	"errors"
-	"github.com/divan/gorilla-xmlrpc/xml"
+	"github.com/caffix/gorilla-xmlrpc/xml"
 	"net/http"
 )
 
