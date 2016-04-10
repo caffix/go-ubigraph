@@ -1,7 +1,7 @@
 package ubigraph
 
 import (
-	"github.com/divan/gorilla-xmlrpc/xml"
+	"github.com/caffix/gorilla-xmlrpc/xml"
 	"github.com/gorilla/rpc"
 	"net/http"
 	"strconv"
