@@ -14,18 +14,23 @@ func (ubi *Ubigraph) Callback(r *http.Request, args *struct{ VertexID int }, rep
 	return nil
 }
 
+// SetCallbackServerAddr assigns the IP address that will be provided to the Ubigraph server for callback.
 func (ubi *Ubigraph) SetCallbackServerAddr(ip string) {
 	ubi.cbServerAddr = ip
 }
 
+// SetCallbackServerPort assigns the port number that will be provided to the Ubigraph server for callback.
 func (ubi *Ubigraph) SetCallbackServerPort(port int) {
 	ubi.cbServerPort = strconv.Itoa(port)
 }
 
+// SetCallbackRoutine assigns the Go function that will be executed as the vertex double-click callback.
 func (ubi *Ubigraph) SetCallbackRoutine(fn func(int)) {
 	ubi.cbRoutine = fn
 }
 
+// StartCallbackServer creates a XMLRPC over HTTP server listening for the Ubigraph callback.
+// This method does not return on success, since it continues listening.
 func (ubi *Ubigraph) StartCallbackServer() {
 	RPC := rpc.NewServer()
 	xmlrpcCodec := xml.NewCodec()
@@ -36,6 +41,7 @@ func (ubi *Ubigraph) StartCallbackServer() {
 	}
 }
 
+// SetVertexStyleCallback sets the double-click callback attribute for the identified style.
 func (ubi *Ubigraph) SetVertexStyleCallback(styleID int) error {
 	s := []string{"http://", ubi.cbServerAddr, ":", ubi.cbServerPort, "/vertex_callback/Ubigraph.Callback"}
 	return ubi.SetVertexStyleAttribute(styleID, "callback_left_doubleclick", strings.Join(s, ""))
