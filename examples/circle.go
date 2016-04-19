@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/caffix/go-ubigraph/ubigraph"
 	"fmt"
+	"github.com/caffix/go-ubigraph/ubigraph"
 	"time"
 )
 
@@ -11,7 +11,7 @@ func callback(id int) {
 }
 
 func main() {
-	graph, _ := ubigraph.NewClient()
+	graph := ubigraph.Client()
 	graph.Clear()
 
 	sytleID, err := graph.NewVertexStyle(0)
@@ -37,9 +37,8 @@ func main() {
 			graph.NewEdge(vertices[i], vertices[(i+1)%cirlen])
 		}
 	}()
-	graph.SetCallbackServerAddr("127.0.0.1")
-	graph.SetCallbackServerPort(20740)
-	graph.SetCallbackRoutine(callback)
-	graph.SetVertexStyleCallback(sytleID)
-	graph.StartCallbackServer()
+	server := ubigraph.CallbackServer()
+	server.SetCallbackRoutine(callback)
+	graph.SetVertexStyleCallback(sytleID, server)
+	server.Start()
 }

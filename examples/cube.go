@@ -12,7 +12,7 @@ func idx(i, j, k int) int {
 }
 
 func main() {
-	graph, _ := ubigraph.NewClient()
+	graph := ubigraph.Client()
 	graph.Clear()
 
 	sytleID, err := graph.NewVertexStyle(0)

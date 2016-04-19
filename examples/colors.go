@@ -7,7 +7,7 @@ import (
 
 func main() {
 	N := 20
-	graph, _ := ubigraph.NewClient()
+	graph := ubigraph.Client()
 	graph.Clear()
 
 	for i := 0; i < N; i += 1 {
