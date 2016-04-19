@@ -8,13 +8,17 @@ import (
 	"fmt"
 	"github.com/caffix/gorilla-xmlrpc/xml"
 	"net/http"
+	"sync"
 )
 
-type Ubigraph struct {
-	rpcUrl       string
-	cbServerAddr string
-	cbServerPort string
-	cbRoutine    func(int)
+var (
+	session *client
+	once    sync.Once
+)
+
+type client struct {
+	rpcUrl string
+	mu     sync.RWMutex
 }
 
 type result struct {
@@ -25,20 +29,24 @@ func ubigraphError(method string, status int) error {
 	return fmt.Errorf("%s failed with status: %d", method, status)
 }
 
-// NewClient creates a unique session with a Ubigraph server.
+// Client provides a reference to the singleton session object with a Ubigraph server.
 // The function assumes the Ubigraph server is on the localhost.
-// It returns the client object for making the API calls.
-func NewClient() (*Ubigraph, error) {
-	rpcurl := "http://127.0.0.1:20738/RPC2"
+// It returns the object for making API calls that manipulate the graph.
+func Client() *client {
+	once.Do(func() {
+		session = &client{
+			rpcUrl: "http://127.0.0.1:20738/RPC2",
+		}
+	})
 
-	return &Ubigraph{rpcUrl: rpcurl}, nil
+	return session
 }
 
 // Clear removes all elements from the Ubigraph server.
-func (ubi *Ubigraph) Clear() error {
+func (c *client) Clear() error {
 	method := "ubigraph.clear"
 
-	status, err := ubi.call(method, nil)
+	status, err := c.call(method, nil)
 	if err != nil {
 		return err
 	}
@@ -49,28 +57,30 @@ func (ubi *Ubigraph) Clear() error {
 }
 
 // SetURL changes the URL used to reach the XMLRPC Ubigraph server.
-func (ubi *Ubigraph) SetURL(url string) error {
-	ubi.rpcUrl = url
+func (c *client) SetURL(url string) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.rpcUrl = url
 	return nil
 }
 
-// Call will make a XMLRPC method call to the Ubigraph server.
+// call will make a XMLRPC method call to the Ubigraph server.
 // It returns the status integer resulting from the XMLRPC method call.
-func (ubi *Ubigraph) call(method string, args interface{}) (status int, err error) {
+func (c *client) call(method string, args interface{}) (status int, err error) {
 	var reply result
 
 	buf, _ := xml.EncodeClientRequest(method, args)
 
-	resp, err := http.Post(ubi.rpcUrl, "text/xml", bytes.NewBuffer(buf))
+	c.mu.Lock()
+	url := c.rpcUrl
+	c.mu.Unlock()
+	resp, err := http.Post(url, "text/xml", bytes.NewBuffer(buf))
 	if err != nil {
 		return
 	}
 	defer resp.Body.Close()
 
 	err = xml.DecodeClientResponse(resp.Body, &reply)
-	if err != nil {
-		return
-	}
 	status = reply.Status
 	return
 }

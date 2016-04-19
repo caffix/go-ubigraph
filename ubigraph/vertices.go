@@ -2,17 +2,17 @@ package ubigraph
 
 // NewVertex creates a vertex on the graph.
 // It returns an Ubigraph server selected vertex ID on success.
-func (ubi *Ubigraph) NewVertex() (int, error) {
+func (c *client) NewVertex() (int, error) {
 	method := "ubigraph.new_vertex"
 
-	return ubi.call(method, nil)
+	return c.call(method, nil)
 }
 
 // RemoveVertex deletes the vertex with the identifier matching the argument.
-func (ubi *Ubigraph) RemoveVertex(vertID int) error {
+func (c *client) RemoveVertex(vertID int) error {
 	method := "ubigraph.remove_vertex"
 
-	status, err := ubi.call(method, &struct{ Arg1 int }{vertID})
+	status, err := c.call(method, &struct{ Arg1 int }{vertID})
 	if err != nil {
 		return err
 	}
@@ -23,10 +23,10 @@ func (ubi *Ubigraph) RemoveVertex(vertID int) error {
 }
 
 // NewVertexWithID creates a vertex on the graph with a chosen identifier.
-func (ubi *Ubigraph) NewVertexWithID(vertID int) error {
+func (c *client) NewVertexWithID(vertID int) error {
 	method := "ubigraph.new_vertex_w_id"
 
-	status, err := ubi.call(method, &struct{ Arg1 int }{vertID})
+	status, err := c.call(method, &struct{ Arg1 int }{vertID})
 	if err != nil {
 		return err
 	}
@@ -38,10 +38,10 @@ func (ubi *Ubigraph) NewVertexWithID(vertID int) error {
 
 // NewVertexStyle creates a vertex style based on an existing style.
 // It returns an Ubigraph server selected style ID on success.
-func (ubi *Ubigraph) NewVertexStyle(parentStyle int) (int, error) {
+func (c *client) NewVertexStyle(parentStyle int) (int, error) {
 	method := "ubigraph.new_vertex_style"
 
-	status, err := ubi.call(method, &struct{ Arg1 int }{parentStyle})
+	status, err := c.call(method, &struct{ Arg1 int }{parentStyle})
 	if err != nil {
 		return 0, err
 	}
@@ -49,10 +49,10 @@ func (ubi *Ubigraph) NewVertexStyle(parentStyle int) (int, error) {
 }
 
 // NewVertexStyleWithID creates a vertex style with a chosen identifier based on an existing style.
-func (ubi *Ubigraph) NewVertexStyleWithID(styleID, parentStyle int) error {
+func (c *client) NewVertexStyleWithID(styleID, parentStyle int) error {
 	method := "ubigraph.new_vertex_style_w_id"
 
-	status, err := ubi.call(method, &struct{ Arg1, Arg2 int }{styleID, parentStyle})
+	status, err := c.call(method, &struct{ Arg1, Arg2 int }{styleID, parentStyle})
 	if err != nil {
 		return err
 	}
@@ -63,10 +63,10 @@ func (ubi *Ubigraph) NewVertexStyleWithID(styleID, parentStyle int) error {
 }
 
 // ChangeVertexStyle changes the identified vertex's style.
-func (ubi *Ubigraph) ChangeVertexStyle(vertID, styleID int) error {
+func (c *client) ChangeVertexStyle(vertID, styleID int) error {
 	method := "ubigraph.change_vertex_style"
 
-	status, err := ubi.call(method, &struct{ Arg1, Arg2 int }{vertID, styleID})
+	status, err := c.call(method, &struct{ Arg1, Arg2 int }{vertID, styleID})
 	if err != nil {
 		return err
 	}
@@ -77,10 +77,10 @@ func (ubi *Ubigraph) ChangeVertexStyle(vertID, styleID int) error {
 }
 
 // SetVertexAttribute modifies the attributes of the identified vertex.
-func (ubi *Ubigraph) SetVertexAttribute(vertID int, attribute, value string) error {
+func (c *client) SetVertexAttribute(vertID int, attribute, value string) error {
 	method := "ubigraph.set_vertex_attribute"
 
-	status, err := ubi.call(method,
+	status, err := c.call(method,
 		&struct {
 			Arg1       int
 			Arg2, Arg3 string
@@ -96,10 +96,10 @@ func (ubi *Ubigraph) SetVertexAttribute(vertID int, attribute, value string) err
 }
 
 // SetVertexStyleAttribute modifies the attributes of the identified vertex style.
-func (ubi *Ubigraph) SetVertexStyleAttribute(styleID int, attribute, value string) error {
+func (c *client) SetVertexStyleAttribute(styleID int, attribute, value string) error {
 	method := "ubigraph.set_vertex_style_attribute"
 
-	status, err := ubi.call(method,
+	status, err := c.call(method,
 		&struct {
 			Arg1       int
 			Arg2, Arg3 string
