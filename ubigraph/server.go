@@ -17,7 +17,7 @@ var (
 type Callback struct {
 	addr    string
 	port    string
-	routine func(int)
+	routine func(VertexID)
 	mu      sync.RWMutex
 }
 
@@ -35,11 +35,11 @@ func CallbackServer() *Callback {
 	return server
 }
 
-func (c *Callback) Proc(r *http.Request, args *struct{ VertexID int }, reply *struct{ Status int }) error {
+func (c *Callback) Proc(r *http.Request, args *struct{ id VertexID }, reply *struct{ Status int }) error {
 	c.mu.Lock()
 	cb := c.routine
 	c.mu.Unlock()
-	cb(args.VertexID)
+	cb(args.id)
 	reply.Status = 0
 	return nil
 }
@@ -59,7 +59,7 @@ func (c *Callback) SetCallbackServerPort(port int) {
 }
 
 // SetCallbackRoutine assigns the Go function that will be executed as the vertex double-click callback.
-func (c *Callback) SetCallbackRoutine(fn func(int)) {
+func (c *Callback) SetCallbackRoutine(fn func(VertexID)) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.routine = fn
@@ -82,19 +82,19 @@ func (c *Callback) Start() {
 }
 
 // SetVertexCallback sets the double-click callback attribute for the identified vertex.
-func (c *client) SetVertexCallback(vertID int, cb *Callback) error {
+func (g *Graph) SetVertexCallback(id VertexID, cb *Callback) error {
 	cb.mu.Lock()
 	pieces := []string{"http://", cb.addr, ":", cb.port, "/vertex_callback/Callback.Proc"}
 	url := strings.Join(pieces, "")
 	cb.mu.Unlock()
-	return c.SetVertexAttribute(vertID, "callback_left_doubleclick", url)
+	return g.SetVertexAttribute(id, "callback_left_doubleclick", url)
 }
 
 // SetVertexStyleCallback sets the double-click callback attribute for the identified style.
-func (c *client) SetVertexStyleCallback(styleID int, cb *Callback) error {
+func (g *Graph) SetVertexStyleCallback(id VertexStyleID, cb *Callback) error {
 	cb.mu.Lock()
 	pieces := []string{"http://", cb.addr, ":", cb.port, "/vertex_callback/Callback.Proc"}
 	url := strings.Join(pieces, "")
 	cb.mu.Unlock()
-	return c.SetVertexStyleAttribute(styleID, "callback_left_doubleclick", url)
+	return g.SetVertexStyleAttribute(id, "callback_left_doubleclick", url)
 }

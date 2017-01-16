@@ -11,42 +11,78 @@ import (
 	"sync"
 )
 
-var (
-	session *client
-	once    sync.Once
-)
+var session = &Graph{
+	rpcUrl: "http://127.0.0.1:20738/RPC2",
+}
 
-type client struct {
+var serverMsgs chan serverMessage
+
+type Graph struct {
 	rpcUrl string
 	mu     sync.RWMutex
+}
+
+type serverMessage struct {
+	url  string
+	buf  []byte
+	resp chan serverResponse
+}
+
+type serverResponse struct {
+	err    error
+	status int
 }
 
 type result struct {
 	Status int
 }
 
+func init() {
+	serverMsgs = make(chan serverMessage)
+
+	go sendServerMessages()
+}
+
 func ubigraphError(method string, status int) error {
 	return fmt.Errorf("%s failed with status: %d", method, status)
 }
 
-// Client provides a reference to the singleton session object with a Ubigraph server.
+func sendServerMessages() {
+	for {
+		select {
+		case msg := <-serverMsgs:
+			var response serverResponse
+
+			resp, err := http.Post(msg.url, "text/xml", bytes.NewBuffer(msg.buf))
+			response.err = err
+			if response.err == nil {
+				var reply result
+
+				response.err = xml.DecodeClientResponse(resp.Body, &reply)
+				if response.err == nil {
+					response.status = reply.Status
+				}
+
+				resp.Body.Close()
+			}
+
+			msg.resp <- response
+		}
+	}
+}
+
+// Ubigraph provides a reference to the singleton session object with a Ubigraph server.
 // The function assumes the Ubigraph server is on the localhost.
 // It returns the object for making API calls that manipulate the graph.
-func Client() *client {
-	once.Do(func() {
-		session = &client{
-			rpcUrl: "http://127.0.0.1:20738/RPC2",
-		}
-	})
-
+func Ubigraph() *Graph {
 	return session
 }
 
 // Clear removes all elements from the Ubigraph server.
-func (c *client) Clear() error {
+func (g *Graph) Clear() error {
 	method := "ubigraph.clear"
 
-	status, err := c.call(method, nil)
+	status, err := g.serverCall(method, nil)
 	if err != nil {
 		return err
 	}
@@ -56,31 +92,33 @@ func (c *client) Clear() error {
 	return nil
 }
 
+func (g *Graph) GetURL() string {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
+	return g.rpcUrl
+}
+
 // SetURL changes the URL used to reach the XMLRPC Ubigraph server.
-func (c *client) SetURL(url string) error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.rpcUrl = url
-	return nil
+func (g *Graph) SetURL(url string) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
+	g.rpcUrl = url
 }
 
 // call will make a XMLRPC method call to the Ubigraph server.
 // It returns the status integer resulting from the XMLRPC method call.
-func (c *client) call(method string, args interface{}) (status int, err error) {
-	var reply result
+func (g *Graph) serverCall(method string, args interface{}) (int, error) {
+	var msg serverMessage
+	var resp serverResponse
 
-	buf, _ := xml.EncodeClientRequest(method, args)
+	msg.url = g.GetURL()
+	msg.buf, _ = xml.EncodeClientRequest(method, args)
+	msg.resp = make(chan serverResponse)
 
-	c.mu.Lock()
-	url := c.rpcUrl
-	c.mu.Unlock()
-	resp, err := http.Post(url, "text/xml", bytes.NewBuffer(buf))
-	if err != nil {
-		return
-	}
-	defer resp.Body.Close()
+	serverMsgs <- msg
+	resp = <-msg.resp
 
-	err = xml.DecodeClientResponse(resp.Body, &reply)
-	status = reply.Status
-	return
+	return resp.status, resp.err
 }

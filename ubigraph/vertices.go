@@ -1,18 +1,25 @@
 package ubigraph
 
+type VertexID int
+type VertexStyleID int
+
 // NewVertex creates a vertex on the graph.
 // It returns an Ubigraph server selected vertex ID on success.
-func (c *client) NewVertex() (int, error) {
+func (g *Graph) NewVertex() (VertexID, error) {
 	method := "ubigraph.new_vertex"
 
-	return c.call(method, nil)
+	status, err := g.serverCall(method, nil)
+	if err != nil {
+		return 0, err
+	}
+	return VertexID(status), nil
 }
 
 // RemoveVertex deletes the vertex with the identifier matching the argument.
-func (c *client) RemoveVertex(vertID int) error {
+func (g *Graph) RemoveVertex(id VertexID) error {
 	method := "ubigraph.remove_vertex"
 
-	status, err := c.call(method, &struct{ Arg1 int }{vertID})
+	status, err := g.serverCall(method, &struct{ Arg1 int }{int(id)})
 	if err != nil {
 		return err
 	}
@@ -23,10 +30,10 @@ func (c *client) RemoveVertex(vertID int) error {
 }
 
 // NewVertexWithID creates a vertex on the graph with a chosen identifier.
-func (c *client) NewVertexWithID(vertID int) error {
+func (g *Graph) NewVertexWithID(id VertexID) error {
 	method := "ubigraph.new_vertex_w_id"
 
-	status, err := c.call(method, &struct{ Arg1 int }{vertID})
+	status, err := g.serverCall(method, &struct{ Arg1 int }{int(id)})
 	if err != nil {
 		return err
 	}
@@ -38,21 +45,21 @@ func (c *client) NewVertexWithID(vertID int) error {
 
 // NewVertexStyle creates a vertex style based on an existing style.
 // It returns an Ubigraph server selected style ID on success.
-func (c *client) NewVertexStyle(parentStyle int) (int, error) {
+func (g *Graph) NewVertexStyle(parentStyle VertexStyleID) (VertexStyleID, error) {
 	method := "ubigraph.new_vertex_style"
 
-	status, err := c.call(method, &struct{ Arg1 int }{parentStyle})
+	status, err := g.serverCall(method, &struct{ Arg1 int }{int(parentStyle)})
 	if err != nil {
 		return 0, err
 	}
-	return status, nil
+	return VertexStyleID(status), nil
 }
 
 // NewVertexStyleWithID creates a vertex style with a chosen identifier based on an existing style.
-func (c *client) NewVertexStyleWithID(styleID, parentStyle int) error {
+func (g *Graph) NewVertexStyleWithID(id, parentStyle VertexStyleID) error {
 	method := "ubigraph.new_vertex_style_w_id"
 
-	status, err := c.call(method, &struct{ Arg1, Arg2 int }{styleID, parentStyle})
+	status, err := g.serverCall(method, &struct{ Arg1, Arg2 int }{int(id), int(parentStyle)})
 	if err != nil {
 		return err
 	}
@@ -63,10 +70,10 @@ func (c *client) NewVertexStyleWithID(styleID, parentStyle int) error {
 }
 
 // ChangeVertexStyle changes the identified vertex's style.
-func (c *client) ChangeVertexStyle(vertID, styleID int) error {
+func (g *Graph) ChangeVertexStyle(vertex VertexID, style VertexStyleID) error {
 	method := "ubigraph.change_vertex_style"
 
-	status, err := c.call(method, &struct{ Arg1, Arg2 int }{vertID, styleID})
+	status, err := g.serverCall(method, &struct{ Arg1, Arg2 int }{int(vertex), int(style)})
 	if err != nil {
 		return err
 	}
@@ -77,14 +84,14 @@ func (c *client) ChangeVertexStyle(vertID, styleID int) error {
 }
 
 // SetVertexAttribute modifies the attributes of the identified vertex.
-func (c *client) SetVertexAttribute(vertID int, attribute, value string) error {
+func (g *Graph) SetVertexAttribute(id VertexID, attribute, value string) error {
 	method := "ubigraph.set_vertex_attribute"
 
-	status, err := c.call(method,
+	status, err := g.serverCall(method,
 		&struct {
 			Arg1       int
 			Arg2, Arg3 string
-		}{vertID, attribute, value})
+		}{int(id), attribute, value})
 
 	if err != nil {
 		return err
@@ -96,14 +103,14 @@ func (c *client) SetVertexAttribute(vertID int, attribute, value string) error {
 }
 
 // SetVertexStyleAttribute modifies the attributes of the identified vertex style.
-func (c *client) SetVertexStyleAttribute(styleID int, attribute, value string) error {
+func (g *Graph) SetVertexStyleAttribute(id VertexStyleID, attribute, value string) error {
 	method := "ubigraph.set_vertex_style_attribute"
 
-	status, err := c.call(method,
+	status, err := g.serverCall(method,
 		&struct {
 			Arg1       int
 			Arg2, Arg3 string
-		}{styleID, attribute, value})
+		}{int(id), attribute, value})
 
 	if err != nil {
 		return err

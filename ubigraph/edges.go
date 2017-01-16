@@ -1,22 +1,25 @@
 package ubigraph
 
+type EdgeID int
+type EdgeStyleID int
+
 // NewEdge creates a edge on the graph connected to two vertices identified by arguments.
 // It returns an Ubigraph server selected edge ID on success.
-func (c *client) NewEdge(vertIDX, vertIDY int) (int, error) {
+func (g *Graph) NewEdge(x, y VertexID) (EdgeID, error) {
 	method := "ubigraph.new_edge"
 
-	status, err := c.call(method, &struct{ Arg1, Arg2 int }{vertIDX, vertIDY})
+	status, err := g.serverCall(method, &struct{ Arg1, Arg2 int }{int(x), int(y)})
 	if err != nil {
 		return 0, err
 	}
-	return status, nil
+	return EdgeID(status), nil
 }
 
 // RemoveEdge deletes the edge with the identifier matching the argument.
-func (c *client) RemoveEdge(edgeID int) error {
+func (g *Graph) RemoveEdge(id EdgeID) error {
 	method := "ubigraph.remove_edge"
 
-	status, err := c.call(method, &struct{ Arg1 int }{edgeID})
+	status, err := g.serverCall(method, &struct{ Arg1 int }{int(id)})
 	if err != nil {
 		return err
 	}
@@ -27,10 +30,10 @@ func (c *client) RemoveEdge(edgeID int) error {
 }
 
 // NewEdgeWithID creates a edge on the graph connected to two selected vertices and with a chosen identifier.
-func (c *client) NewEdgeWithID(edgeID, vertIDX, vertIDY int) error {
+func (g *Graph) NewEdgeWithID(id EdgeID, vertIDX, vertIDY int) error {
 	method := "ubigraph.new_edge_w_id"
 
-	status, err := c.call(method, &struct{ Arg1, Arg2, Arg3 int }{edgeID, vertIDX, vertIDY})
+	status, err := g.serverCall(method, &struct{ Arg1, Arg2, Arg3 int }{int(id), int(vertIDX), int(vertIDY)})
 	if err != nil {
 		return err
 	}
@@ -42,21 +45,21 @@ func (c *client) NewEdgeWithID(edgeID, vertIDX, vertIDY int) error {
 
 // NewEdgeStyle creates a edge style based on an existing style.
 // It returns an Ubigraph server selected style ID on success.
-func (c *client) NewEdgeStyle(parentStyle int) (int, error) {
+func (g *Graph) NewEdgeStyle(parentStyle EdgeStyleID) (EdgeStyleID, error) {
 	method := "ubigraph.new_edge_style"
 
-	status, err := c.call(method, &struct{ Arg1 int }{parentStyle})
+	status, err := g.serverCall(method, &struct{ Arg1 int }{int(parentStyle)})
 	if err != nil {
 		return 0, err
 	}
-	return status, nil
+	return EdgeStyleID(status), nil
 }
 
 // NewEdgeStyleWithID creates a edge style with a chosen identifier based on an existing style.
-func (c *client) NewEdgeStyleWithID(styleID, parentStyle int) error {
+func (g *Graph) NewEdgeStyleWithID(id, parentStyle EdgeStyleID) error {
 	method := "ubigraph.new_edge_style_w_id"
 
-	status, err := c.call(method, &struct{ Arg1, Arg2 int }{styleID, parentStyle})
+	status, err := g.serverCall(method, &struct{ Arg1, Arg2 int }{int(id), int(parentStyle)})
 	if err != nil {
 		return err
 	}
@@ -67,10 +70,10 @@ func (c *client) NewEdgeStyleWithID(styleID, parentStyle int) error {
 }
 
 // ChangeEdgeStyle changes the identified edge's style.
-func (c *client) ChangeEdgeStyle(edgeID, styleID int) error {
+func (g *Graph) ChangeEdgeStyle(edge EdgeID, style EdgeStyleID) error {
 	method := "ubigraph.change_edge_style"
 
-	status, err := c.call(method, &struct{ Arg1, Arg2 int }{edgeID, styleID})
+	status, err := g.serverCall(method, &struct{ Arg1, Arg2 int }{int(edge), int(style)})
 	if err != nil {
 		return err
 	}
@@ -81,14 +84,14 @@ func (c *client) ChangeEdgeStyle(edgeID, styleID int) error {
 }
 
 // SetEdgeAttribute modifies the attributes of the identified edge.
-func (c *client) SetEdgeAttribute(edgeID int, attribute, value string) error {
+func (g *Graph) SetEdgeAttribute(id EdgeID, attribute, value string) error {
 	method := "ubigraph.set_edge_attribute"
 
-	status, err := c.call(method,
+	status, err := g.serverCall(method,
 		&struct {
 			Arg1       int
 			Arg2, Arg3 string
-		}{edgeID, attribute, value})
+		}{int(id), attribute, value})
 
 	if err != nil {
 		return err
@@ -100,14 +103,14 @@ func (c *client) SetEdgeAttribute(edgeID int, attribute, value string) error {
 }
 
 // SetEdgeStyleAttribute modifies the attributes of the identified edge style.
-func (c *client) SetEdgeStyleAttribute(styleID int, attribute, value string) error {
+func (g *Graph) SetEdgeStyleAttribute(id EdgeStyleID, attribute, value string) error {
 	method := "ubigraph.set_edge_style_attribute"
 
-	status, err := c.call(method,
+	status, err := g.serverCall(method,
 		&struct {
 			Arg1       int
 			Arg2, Arg3 string
-		}{styleID, attribute, value})
+		}{int(id), attribute, value})
 
 	if err != nil {
 		return err
