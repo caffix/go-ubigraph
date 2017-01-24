@@ -1,100 +1,137 @@
 package ubigraph
 
 import (
+	"fmt"
 	"github.com/caffix/gorilla-xmlrpc/xml"
+	"github.com/gorilla/mux"
 	"github.com/gorilla/rpc"
+	"net"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
-	"sync"
 )
 
-var (
-	server    *Callback
-	oneServer sync.Once
-)
-
-type Callback struct {
-	addr    string
-	port    string
-	routine func(VertexID)
-	mu      sync.RWMutex
+// Returns the IP address of the machine identified by the URL provided.
+func graphAddr(URL string) string {
+	u, err := url.Parse(URL)
+	if err != nil {
+		return ""
+	}
+	// we are not interested in the port
+	end := strings.Index(u.Host, ":")
+	if end == -1 {
+		end = len(u.Host)
+	}
+	// get the IP address
+	addrs, err := net.LookupHost(u.Host[:end])
+	if err != nil {
+		return ""
+	}
+	return addrs[0]
 }
 
-// CallbackServer provides a reference to the singleton object that handles double-click callbacks from the Ubigraph server.
-// The function assumes the Ubigraph and callback server are on the localhost.
-// It returns the object for making callback server related API calls.
-func CallbackServer() *Callback {
-	oneServer.Do(func() {
-		server = &Callback{
-			addr: "127.0.0.1",
-			port: "20740",
-		}
-	})
+// Returns the local IP address used as a source address when
+// sending traffic to the address provided by the parameter.
+func localAddr(addr string) (string, bool) {
+	dst := net.UDPAddr{Port: 9} // port number selected is irrelevant
+	dst.IP = net.ParseIP(addr)
 
-	return server
+	// setup a connection (no packets to be sent)
+	c, err := net.DialUDP("udp", nil, &dst)
+	if err != nil {
+		return "", false
+	}
+	defer c.Close()
+	// pull the source address
+	src, ok := c.LocalAddr().(*net.UDPAddr)
+	if !ok {
+		return "", false
+	}
+	return src.IP.String(), true
 }
 
-func (c *Callback) Proc(r *http.Request, args *struct{ id VertexID }, reply *struct{ Status int }) error {
-	c.mu.Lock()
-	cb := c.routine
-	c.mu.Unlock()
-	cb(args.id)
-	reply.Status = 0
-	return nil
-}
-
-// SetCallbackServerAddr assigns the IP address that will be provided to the Ubigraph server for callback.
-func (c *Callback) SetCallbackServerAddr(ip string) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.addr = ip
-}
-
-// SetCallbackServerPort assigns the port number that will be provided to the Ubigraph server for callback.
-func (c *Callback) SetCallbackServerPort(port int) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.port = strconv.Itoa(port)
-}
-
-// SetCallbackRoutine assigns the Go function that will be executed as the vertex double-click callback.
-func (c *Callback) SetCallbackRoutine(fn func(VertexID)) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.routine = fn
-}
-
-// Start creates a XMLRPC over HTTP server listening for the Ubigraph callback.
-// This method does not return on success, since it continues listening.
-func (c *Callback) Start() {
+// Creates a XMLRPC over HTTP server listening for the Ubigraph callback.
+// This function does not return on success, since it continues listening.
+func (g *Graph) startCallbackServer() {
 	RPC := rpc.NewServer()
+
+	// ubigraph uses XML
 	xmlrpcCodec := xml.NewCodec()
 	RPC.RegisterCodec(xmlrpcCodec, "text/xml")
-	if err := RPC.RegisterService(c, ""); err == nil {
-		http.Handle("/vertex_callback", RPC)
-		c.mu.Lock()
-		addr := c.addr
-		port := c.port
-		c.mu.Unlock()
-		http.ListenAndServe(addr+":"+port, nil)
+
+	// register this graph object for handling the RPC calls
+	if err := RPC.RegisterService(g, ""); err == nil {
+		routes := mux.NewRouter()
+		addr, _ := localAddr(graphAddr(g.rpcUrl))
+
+		// setup the router for pulling out the style id from the URL
+		routes.Handle("/style_callback/{id:[0-9]+}", RPC)
+		routes.Handle("/vertex_callback", RPC)
+		http.Handle("/", routes)
+		http.ListenAndServe(addr+":20740", nil)
 	}
 }
 
-// SetVertexCallback sets the double-click callback attribute for the identified vertex.
-func (g *Graph) SetVertexCallback(id VertexID, cb *Callback) error {
-	cb.mu.Lock()
-	pieces := []string{"http://", cb.addr, ":", cb.port, "/vertex_callback/Callback.Proc"}
+func (g *Graph) checkCallbackServer() {
+	if g.callbackStarted {
+		return
+	}
+	// TODO: dynamically select the port number here
+	g.callbackStarted = true
+	go g.startCallbackServer()
+}
+
+// Called by the RPC library
+func (g *Graph) Callback(r *http.Request, args *struct{ ID int }, reply *struct{ Status int }) error {
+	vid := VertexID(args.ID)
+	vars := mux.Vars(r)
+	var cb func(VertexID)
+
+	// look for a vertex callback routine
+	if vars == nil {
+		cb = g.vertexCallbacks[vid]
+	} else if sid, ok := vars["id"]; ok {
+		// a callback routine was registered with the vertex style
+		i, err := strconv.Atoi(sid)
+		if err != nil {
+			reply.Status = 1
+			return err
+		}
+
+		cb = g.styleCallbacks[VertexStyleID(i)]
+	}
+	// check if a user-registered callback routine was found
+	if cb == nil {
+		reply.Status = 1
+		return fmt.Errorf("Callback for vertex %d was not found", int(vid))
+	}
+	// call the user-registered callback routine
+	cb(vid)
+	return nil
+}
+
+// SetVertexCallback sets the double-click callback attribute for the identified vertex
+func (g *Graph) SetVertexCallback(id VertexID, f func(VertexID)) error {
+	g.checkCallbackServer()
+	g.vertexCallbacks[id] = f
+
+	addr, _ := localAddr(graphAddr(g.rpcUrl))
+	pieces := []string{"http://", addr, ":20740", "/vertex_callback/Graph.Callback"}
 	url := strings.Join(pieces, "")
-	cb.mu.Unlock()
+
 	return g.SetVertexAttribute(id, "callback_left_doubleclick", url)
 }
 
-// SetVertexStyleCallback sets the double-click callback attribute for the identified style.
-func (g *Graph) SetVertexStyleCallback(id VertexStyleID, cb *Callback) error {
-	cb.mu.Lock()
-	pieces := []string{"http://", cb.addr, ":", cb.port, "/vertex_callback/Callback.Proc"}
+// SetVertexStyleCallback sets the double-click callback attribute for the identified style
+func (g *Graph) SetVertexStyleCallback(id VertexStyleID, f func(VertexID)) error {
+	g.checkCallbackServer()
+	g.styleCallbacks[id] = f
+
+	addr, _ := localAddr(graphAddr(g.rpcUrl))
+	sid := strconv.Itoa(int(id))
+	pieces := []string{"http://", addr, ":20740", "/style_callback/" + sid + "/Graph.Callback"}
 	url := strings.Join(pieces, "")
-	cb.mu.Unlock()
+
 	return g.SetVertexStyleAttribute(id, "callback_left_doubleclick", url)
 }

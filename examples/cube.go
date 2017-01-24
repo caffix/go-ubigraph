@@ -7,28 +7,29 @@ import (
 
 var N int = 10
 
-func idx(i, j, k int) int {
-	return i*N*N + j*N + k
+func idx(i, j, k int) ubigraph.VertexID {
+	return ubigraph.VertexID(i*N*N + j*N + k)
 }
 
 func main() {
-	graph := ubigraph.Client()
+	graph := ubigraph.Ubigraph()
 	graph.Clear()
 
-	sytleID, err := graph.NewVertexStyle(0)
+	sid, err := graph.NewVertexStyle(0)
 	if err != nil {
 		return
 	}
-	graph.SetVertexStyleAttribute(sytleID, "shape", "octahedron")
-	graph.SetVertexStyleAttribute(sytleID, "size", "2.0")
-	graph.SetVertexStyleAttribute(sytleID, "color", "#00ff00")
+	graph.SetVertexStyleAttribute(sid, "shape", "octahedron")
+	graph.SetVertexStyleAttribute(sid, "size", "2.0")
+	graph.SetVertexStyleAttribute(sid, "color", "#00ff00")
 
 	for i := 0; i < N; i += 1 {
 		for j := 0; j < N; j += 1 {
 			for k := 0; k < N; k += 1 {
 				v := idx(i, j, k)
+
 				graph.NewVertexWithID(v)
-				graph.ChangeVertexStyle(v, sytleID)
+				graph.ChangeVertexStyle(v, sid)
 				if i != 0 {
 					graph.NewEdge(idx(i-1, j, k), v)
 				}

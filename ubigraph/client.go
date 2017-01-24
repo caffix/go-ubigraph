@@ -8,18 +8,13 @@ import (
 	"fmt"
 	"github.com/caffix/gorilla-xmlrpc/xml"
 	"net/http"
-	"sync"
 )
 
-var session = &Graph{
-	rpcUrl: "http://127.0.0.1:20738/RPC2",
-}
-
-var serverMsgs chan serverMessage
-
 type Graph struct {
-	rpcUrl string
-	mu     sync.RWMutex
+	rpcUrl          string
+	callbackStarted bool
+	vertexCallbacks map[VertexID]func(VertexID)
+	styleCallbacks  map[VertexStyleID]func(VertexID)
 }
 
 type serverMessage struct {
@@ -33,21 +28,29 @@ type serverResponse struct {
 	status int
 }
 
-type result struct {
-	Status int
-}
+var (
+	graphs     map[string]*Graph
+	serverMsgs chan serverMessage
+)
 
 func init() {
+	// Graph objects are created for each host running a Ubigraph server
+	graphs = make(map[string]*Graph)
+	// start the message manager and channel
 	serverMsgs = make(chan serverMessage)
-
-	go sendServerMessages()
+	go msgManager()
 }
 
 func ubigraphError(method string, status int) error {
 	return fmt.Errorf("%s failed with status: %d", method, status)
 }
 
-func sendServerMessages() {
+// Accepts ubigraph request messages over a channel and sends them
+// out to the target ubigraph server.
+// Runs as a separate goroutine.
+func msgManager() {
+	type result struct{ Status int }
+
 	for {
 		select {
 		case msg := <-serverMsgs:
@@ -71,11 +74,37 @@ func sendServerMessages() {
 	}
 }
 
-// Ubigraph provides a reference to the singleton session object with a Ubigraph server.
-// The function assumes the Ubigraph server is on the localhost.
+func newGraph(addr string) *Graph {
+	g := &Graph{rpcUrl: "http://" + addr + ":20738/RPC2"}
+
+	g.vertexCallbacks = make(map[VertexID]func(VertexID))
+	g.styleCallbacks = make(map[VertexStyleID]func(VertexID))
+	graphs[addr] = g
+	return g
+}
+
+// Ubigraph provides a reference to a session object with the Ubigraph server.
+// The function assumes the Ubigraph server is on the localhost, unless the
+// optional argument indicates otherwise.
 // It returns the object for making API calls that manipulate the graph.
-func Ubigraph() *Graph {
-	return session
+func Ubigraph(url ...string) *Graph {
+	addr := "127.0.0.1"
+
+	if l := len(url); l > 1 {
+		return nil
+	} else if l == 1 {
+		a := graphAddr(url[0])
+
+		if a == "" {
+			return nil
+		}
+		addr = a
+	}
+
+	if g, ok := graphs[addr]; ok {
+		return g
+	}
+	return newGraph(addr)
 }
 
 // Clear removes all elements from the Ubigraph server.
@@ -92,28 +121,13 @@ func (g *Graph) Clear() error {
 	return nil
 }
 
-func (g *Graph) GetURL() string {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-
-	return g.rpcUrl
-}
-
-// SetURL changes the URL used to reach the XMLRPC Ubigraph server.
-func (g *Graph) SetURL(url string) {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-
-	g.rpcUrl = url
-}
-
 // call will make a XMLRPC method call to the Ubigraph server.
 // It returns the status integer resulting from the XMLRPC method call.
 func (g *Graph) serverCall(method string, args interface{}) (int, error) {
 	var msg serverMessage
 	var resp serverResponse
 
-	msg.url = g.GetURL()
+	msg.url = g.rpcUrl
 	msg.buf, _ = xml.EncodeClientRequest(method, args)
 	msg.resp = make(chan serverResponse)
 

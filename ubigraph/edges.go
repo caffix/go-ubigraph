@@ -30,10 +30,10 @@ func (g *Graph) RemoveEdge(id EdgeID) error {
 }
 
 // NewEdgeWithID creates a edge on the graph connected to two selected vertices and with a chosen identifier.
-func (g *Graph) NewEdgeWithID(id EdgeID, vertIDX, vertIDY int) error {
+func (g *Graph) NewEdgeWithID(id EdgeID, x, y VertexID) error {
 	method := "ubigraph.new_edge_w_id"
 
-	status, err := g.serverCall(method, &struct{ Arg1, Arg2, Arg3 int }{int(id), int(vertIDX), int(vertIDY)})
+	status, err := g.serverCall(method, &struct{ Arg1, Arg2, Arg3 int }{int(id), int(x), int(y)})
 	if err != nil {
 		return err
 	}

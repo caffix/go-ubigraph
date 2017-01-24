@@ -18,7 +18,7 @@ That's it! You're ready to roll :-)
 
     import "github.com/caffix/go-ubigraph/ubigraph"
 
-    graph := ubigraph.Client()
+    graph := ubigraph.Ubigraph()
     graph.Clear()
     
     x, _ := graph.NewVertex()

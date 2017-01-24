@@ -6,15 +6,16 @@ import (
 )
 
 func main() {
-	N := 20
-	graph := ubigraph.Client()
+	var i, N ubigraph.VertexID
+	graph := ubigraph.Ubigraph()
 	graph.Clear()
 
-	for i := 0; i < N; i += 1 {
+	N = 20
+	for i = 0; i < N; i += 1 {
 		graph.NewVertexWithID(i)
 	}
 
-	for i := 0; i < N; i += 1 {
+	for i = 0; i < N; i += 1 {
 		var r int = int(float32(i) / float32(N) * 255)
 		c := fmt.Sprintf("#%02x%02x%02x", r, 255-r, 255)
 		graph.SetVertexAttribute(i, "color", c)
